@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>RaceCar SMS (Pole Position)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <style>
+    body { background: #222; color: #fff; font-family: Arial; text-align: center; margin: 0; }
+    canvas { background: #222; display: block; margin: 20px auto; border: 2px solid #fff; }
+    #score { font-size: 1.2em; margin: 10px; }
+    button { margin: 10px; padding: 8px 18px; font-size: 1em; border-radius: 6px; border: none; background: #444; color: #fff; }
+    button:hover { background: #666; }
+  </style>
+</head>
+<body>
+  <h2>RaceCar SMS - Pole Position</h2>
+  <div id="score">Pontuação: 0</div>
+  <canvas id="game" width="320" height="480"></canvas>
+  <div>
+    <button onclick="restartGame()">Novo Jogo</button>
+  </div>
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    // Carro do jogador
+    const car = { x: W/2, y: H-60, w: 32, h: 48, speed: 0, maxSpeed: 9, acc: 0.18, friction: 0.07 };
+
+    // Estrada
+    let roadWidth = 160;
+    let roadCurve = 0;
+    let roadCurveTarget = 0;
+    let roadOffset = 0;
+
+    // Obstáculos (outros carros)
+    let enemies = [];
+    let enemyTimer = 0;
+
+    let score = 0;
+    let gameOver = false;
+    let message = "";
+
+    function drawRoad() {
+      // Estrada com curva
+      ctx.save();
+      ctx.clearRect(0, 0, W, H);
+      for (let y = 0; y < H; y += 4) {
+        let perspective = 1 - y / H;
+        let lineWidth = roadWidth * perspective + 40;
+        let curve = roadCurve * Math.pow(1 - y / H, 2);
+        let center = W/2 + curve + roadOffset;
+        ctx.fillStyle = "#888";
+        ctx.fillRect(center - lineWidth/2, y, lineWidth, 4);
+        // Bordas
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(center - lineWidth/2 - 8, y, 8, 4);
+        ctx.fillRect(center + lineWidth/2, y, 8, 4);
+        // Grama
+        ctx.fillStyle = "#0a0";
+        ctx.fillRect(0, y, center - lineWidth/2 - 8, 4);
+        ctx.fillRect(center + lineWidth/2 + 8, y, W - (center + lineWidth/2 + 8), 4);
+      }
+      ctx.restore();
+    }
+
+    function drawCar() {
+      // Carro do jogador
+      ctx.save();
+      ctx.translate(car.x, car.y);
+      ctx.fillStyle = "#ff0";
+      ctx.fillRect(-car.w/2, -car.h/2, car.w, car.h);
+      ctx.fillStyle = "#f00";
+      ctx.fillRect(-car.w/4, car.h/4, car.w/2, car.h/4);
+      ctx.restore();
+    }
+
+    function drawEnemies() {
+      for (const e of enemies) {
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        ctx.fillStyle = "#0ff";
+        ctx.fillRect(-e.w/2, -e.h/2, e.w, e.h);
+        ctx.fillStyle = "#00f";
+        ctx.fillRect(-e.w/4, e.h/4, e.w/2, e.h/4);
+        ctx.restore();
+      }
+    }
+
+    function drawMessage() {
+      if (message) {
+        ctx.font = "bold 22px Arial";
+        ctx.fillStyle = "#ff0";
+        ctx.textAlign = "center";
+        ctx.fillText(message, W/2, H/2);
+      }
+    }
+
+    function draw() {
+      drawRoad();
+      drawEnemies();
+      drawCar();
+      drawMessage();
+    }
+
+    function update() {
+      if (gameOver) return;
+      // Curva da estrada
+      if (Math.abs(roadCurve - roadCurveTarget) < 1) {
+        roadCurveTarget = (Math.random() - 0.5) * 120;
+      }
+      roadCurve += (roadCurveTarget - roadCurve) * 0.01;
+
+      // Movimento do carro
+      car.x += car.speed * Math.sin(roadCurve * 0.008);
+      car.x = Math.max(car.w/2+20, Math.min(W-car.w/2-20, car.x));
+      car.speed -= car.friction;
+      if (car.speed < 0) car.speed = 0;
+
+      // Obstáculos
+      for (const e of enemies) {
+        e.y += car.speed + 3;
+      }
+      enemies = enemies.filter(e => e.y < H + 60);
+
+      // Gera novos carros adversários
+      enemyTimer--;
+      if (enemyTimer <= 0) {
+        let ex = W/2 + (Math.random()-0.5)*roadWidth*0.7 + roadCurve*0.5 + roadOffset;
+        ex = Math.max(40, Math.min(W-40, ex));
+        enemies.push({ x: ex, y: -40, w: 32, h: 48 });
+        enemyTimer = 60 + Math.random()*60;
+      }
+
+      // Colisão
+      for (const e of enemies) {
+        if (
+          Math.abs(car.x - e.x) < (car.w+e.w)/2-4 &&
+          Math.abs(car.y - e.y) < (car.h+e.h)/2-4
+        ) {
+          message = "Game Over!";
+          gameOver = true;
+        }
+      }
+
+      // Pontuação
+      if (!gameOver) score += Math.floor(car.speed);
+
+      document.getElementById("score").textContent = "Pontuação: " + score;
+      draw();
+      if (!gameOver) requestAnimationFrame(update);
+    }
+
+    function restartGame() {
+      car.x = W/2;
+      car.y = H-60;
+      car.speed = 0;
+      enemies = [];
+      score = 0;
+      gameOver = false;
+      message = "";
+      roadCurve = 0;
+      roadCurveTarget = 0;
+      roadOffset = 0;
+      enemyTimer = 0;
+      draw();
+      requestAnimationFrame(update);
+    }
+
+    // Controles: setas para esquerda/direita e acelerar
+    document.addEventListener("keydown", e => {
+      if (e.key === "ArrowLeft") {
+        car.x -= 18;
+        roadOffset += 2;
+      }
+      if (e.key === "ArrowRight") {
+        car.x += 18;
+        roadOffset -= 2;
+      }
+      if (e.key === "ArrowUp") {
+        car.speed += car.acc;
+        if (car.speed > car.maxSpeed) car.speed = car.maxSpeed;
+      }
+      if (e.key === "r" || e.key === "R") restartGame();
+    });
+
+    restartGame();
+  </script>
+</body>
+</html>
