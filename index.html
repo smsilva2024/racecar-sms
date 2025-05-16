@@ -16,7 +16,11 @@
   <h2>RaceCar SMS - Pole Position</h2>
   <div id="score">Pontuação: 0</div>
   <canvas id="game" width="320" height="480"></canvas>
-  <div>
+  <div class="controls" style="max-width:220px; margin:10px auto; display:flex; flex-wrap:wrap; gap:6px; justify-content:center;">
+    <button onclick="moveLeft()">⬅️</button>
+    <button onclick="moveRight()">➡️</button>
+    <button onclick="accelerate()">Acelerar ⏫</button>
+    <button onclick="brake()">Frear ⏬</button>
     <button onclick="restartGame()">Novo Jogo</button>
   </div>
   <script>
@@ -167,20 +171,32 @@
       requestAnimationFrame(update);
     }
 
+    function moveLeft() {
+      car.x -= 18;
+      roadOffset += 2;
+    }
+
+    function moveRight() {
+      car.x += 18;
+      roadOffset -= 2;
+    }
+
+    function accelerate() {
+      car.speed += car.acc;
+      if (car.speed > car.maxSpeed) car.speed = car.maxSpeed;
+    }
+
+    function brake() {
+      car.speed -= car.acc * 1.5;
+      if (car.speed < 0) car.speed = 0;
+    }
+
     // Controles: setas para esquerda/direita e acelerar
     document.addEventListener("keydown", e => {
-      if (e.key === "ArrowLeft") {
-        car.x -= 18;
-        roadOffset += 2;
-      }
-      if (e.key === "ArrowRight") {
-        car.x += 18;
-        roadOffset -= 2;
-      }
-      if (e.key === "ArrowUp") {
-        car.speed += car.acc;
-        if (car.speed > car.maxSpeed) car.speed = car.maxSpeed;
-      }
+      if (e.key === "ArrowLeft") moveLeft();
+      if (e.key === "ArrowRight") moveRight();
+      if (e.key === "ArrowUp") accelerate();
+      if (e.key === "ArrowDown") brake();
       if (e.key === "r" || e.key === "R") restartGame();
     });
 
